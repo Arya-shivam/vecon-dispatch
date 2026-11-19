@@ -72,3 +72,11 @@ export const trips = pgTable(
   },
   (t) => [uniqueIndex("assignment_trip_no").on(t.assignmentId, t.no)],
 );
+/** Web Push endpoints — outside dispatch State JSON, managed by lib/push. */
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  endpoint: text("endpoint").primaryKey(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  userAgent: text("user_agent").notNull().default(""),
+  createdAt: text("created_at").notNull(),
+});

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { logout } from "@/app/actions";
 import { getAccess } from "@/lib/auth";
 import { demoMode } from "@/lib/store";
+import { NotifyToggle } from "@/components/notify-toggle";
 export default async function Settings() {
   const access = await getAccess();
   return (
@@ -18,6 +19,10 @@ export default async function Settings() {
           On Android, open the Chrome menu and choose Install app or Add to Home
           screen.
         </p>
+      </section>
+      <section className="panel settings">
+        <h2>Notifications</h2>
+        <NotifyToggle />
       </section>
       <section className="panel settings">
         <h2>Connection and data</h2>
@@ -37,7 +42,7 @@ export default async function Settings() {
         <p>Dispatch · Version 0.1.0</p>
         <p>
           Anyone can view daily jobs without signing in. Admins sign in to
-          create jobs, update trips, and manage masters.
+          create, edit, and delete jobs, trucks, and masters.
         </p>
         {!demoMode && access.guest && (
           <p>

@@ -6,15 +6,24 @@ import { z } from "zod";
 import { requireAdmin, clearSession } from "@/lib/auth";
 import { createJobSchema, masterSchema, statusSchema } from "@/lib/domain";
 import { applyJobEdit } from "@/lib/job-edit";
+import { notifyDispatchChange, type PushNotice } from "@/lib/push";
 import { mutate } from "@/lib/store";
 export type Result = { ok: true; id?: string } | { ok: false; error: string };
+const defaultNotice: PushNotice = {
+  title: "VECON Dispatch",
+  body: "Jobs were updated. Open the app to see changes.",
+  url: "/",
+};
 async function action(
   fn: () => Promise<string | void>,
+  notice: PushNotice | false = defaultNotice,
 ): Promise<Result> {
   await requireAdmin();
   try {
     const id = await fn();
     revalidatePath("/", "layout");
+    // ponytail: fire-and-forget; failed push must never roll back a saved job
+    if (notice) void notifyDispatchChange(notice).catch(() => {});
     return { ok: true, ...(id ? { id } : {}) };
   } catch (e) {
     return {
@@ -144,7 +153,7 @@ export async function saveMaster(input: unknown): Promise<Result> {
       if (index >= 0) state.masters[index] = v;
       else state.masters.push({ ...v, id: randomUUID() });
     });
-  });
+  }, false);
 }
 export async function deleteMaster(input: unknown): Promise<Result> {
   return action(async () => {
@@ -168,7 +177,7 @@ export async function deleteMaster(input: unknown): Promise<Result> {
         );
       state.masters = state.masters.filter((m) => m.id !== v.id);
     });
-  });
+  }, false);
 }
 export async function deleteJob(input: unknown): Promise<Result> {
   return action(async () => {
