@@ -5,9 +5,12 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin, clearSession } from "@/lib/auth";
 import { createJobSchema, masterSchema, statusSchema } from "@/lib/domain";
+import { applyJobEdit } from "@/lib/job-edit";
 import { mutate } from "@/lib/store";
 export type Result = { ok: true; id?: string } | { ok: false; error: string };
-async function action(fn: () => Promise<string | void>): Promise<Result> {
+async function action(
+  fn: () => Promise<string | void>,
+): Promise<Result> {
   await requireAdmin();
   try {
     const id = await fn();
@@ -145,24 +148,62 @@ export async function saveMaster(input: unknown): Promise<Result> {
 }
 export async function deleteMaster(input: unknown): Promise<Result> {
   return action(async () => {
+    const v =
+      typeof input === "string"
+        ? { id: z.string().parse(input), force: false }
+        : z.object({ id: z.string(), force: z.boolean().optional() }).parse(input);
+    await mutate((state) => {
+      const used = state.jobs.some((j) =>
+        [
+          j.customer,
+          j.product,
+          j.origin,
+          j.destination,
+          ...j.assignments.map((a) => a.truckId),
+        ].includes(v.id),
+      );
+      if (used && !v.force)
+        throw new Error(
+          "Used by a job. Delete those jobs first, or confirm force delete.",
+        );
+      state.masters = state.masters.filter((m) => m.id !== v.id);
+    });
+  });
+}
+export async function deleteJob(input: unknown): Promise<Result> {
+  return action(async () => {
     const id = z.string().parse(input);
     await mutate((state) => {
-      if (
-        state.jobs.some((j) =>
-          [
-            j.customer,
-            j.product,
-            j.origin,
-            j.destination,
-            ...j.assignments.map((a) => a.truckId),
-          ].includes(id),
-        )
-      )
-        throw new Error(
-          "Used by a job. Set it inactive to preserve job history.",
-        );
-      state.masters = state.masters.filter((m) => m.id !== id);
+      const before = state.jobs.length;
+      state.jobs = state.jobs.filter((j) => j.id !== id);
+      if (state.jobs.length === before) throw new Error("Job not found.");
     });
+  });
+}
+export async function updateJob(input: unknown): Promise<Result> {
+  return action(async () => {
+    const v = z
+      .object({
+        id: z.string(),
+        wo: z.string().trim().min(1).max(80),
+        customer: z.string().min(1),
+        product: z.string().min(1),
+        origin: z.string().min(1),
+        destination: z.string().min(1),
+        target: z.coerce.number().positive().max(10000000),
+        wt: z.coerce.number().positive().max(200),
+        trucks: z
+          .array(
+            z.object({
+              truckId: z.string().min(1),
+              planned: z.coerce.number().int().min(1).max(100),
+            }),
+          )
+          .min(1)
+          .max(100),
+      })
+      .parse(input);
+    await mutate((state) => applyJobEdit(state, v));
   });
 }
 export async function logout() {

@@ -11,6 +11,7 @@ import {
   number,
 } from "@/lib/domain";
 import { JobSwitcher, TruckTrips } from "@/components/daily";
+import { JobAdmin } from "@/components/job-admin";
 export default async function Daily({
   params,
   searchParams,
@@ -76,6 +77,7 @@ export default async function Daily({
                 {p.status}
               </span>
             </div>
+            {admin && <JobAdmin job={job} masters={state.masters} />}
             <h2>{name(job.customer)}</h2>
             <p>{name(job.product)}</p>
             <div className="route">

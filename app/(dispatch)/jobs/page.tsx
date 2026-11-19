@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { readState } from "@/lib/store";
 import { progress, formatDate, number } from "@/lib/domain";
+import { DeleteJobButton } from "@/components/job-admin";
 export default async function Jobs() {
   await requireAdmin();
   const state = await readState();
@@ -16,23 +17,24 @@ export default async function Jobs() {
       {jobs.map((j) => {
         const p = progress(j);
         return (
-          <Link
-            className="job-row panel"
-            key={j.id}
-            href={`/d/${j.date}?job=${j.id}`}
-          >
-            <div className="row">
-              <strong>
-                Job #{j.seq} · {j.wo}
-              </strong>
-              <span className="badge">{p.status}</span>
+          <div className="job-row panel" key={j.id}>
+            <Link href={`/d/${j.date}?job=${j.id}`}>
+              <div className="row">
+                <strong>
+                  Job #{j.seq} · {j.wo}
+                </strong>
+                <span className="badge">{p.status}</span>
+              </div>
+              <p>{state.masters.find((m) => m.id === j.customer)?.name}</p>
+              <span className="small">
+                {formatDate(j.date)} · {p.done}/{p.planned} trips ·{" "}
+                {number(p.tons)} t
+              </span>
+            </Link>
+            <div className="job-row-actions">
+              <DeleteJobButton id={j.id} label={`job #${j.seq} (${j.wo})`} />
             </div>
-            <p>{state.masters.find((m) => m.id === j.customer)?.name}</p>
-            <span className="small">
-              {formatDate(j.date)} · {p.done}/{p.planned} trips ·{" "}
-              {number(p.tons)} t
-            </span>
-          </Link>
+          </div>
         );
       })}
       {!jobs.length && (
